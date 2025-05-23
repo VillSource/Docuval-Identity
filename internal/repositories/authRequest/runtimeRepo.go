@@ -4,7 +4,7 @@ package authRequestRepository
 import (
 	"fmt"
 
-	"github.com/villsource/docuval-identity/pkg/models"
+	"github.com/villsource/docuval-identity/internal/models"
 )
 
 type RuntimeRepository struct {

@@ -1,4 +1,4 @@
-package identity
+package docuvalIdentityFiberAdapter
 
 import (
 	"fmt"
@@ -6,26 +6,15 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/villsource/docuval-identity/configs/endpoints"
-	"github.com/villsource/docuval-identity/pkg/models"
-	authRequestRepository "github.com/villsource/docuval-identity/pkg/repositories/authRequest"
-	authRequestService "github.com/villsource/docuval-identity/pkg/services/authRequest"
+	"github.com/villsource/docuval-identity/internal/identity"
+	"github.com/villsource/docuval-identity/internal/models"
 )
 
-type Identity struct {
-	authRequestService authRequestService.AuthRequestService
-}
-
-func New() *Identity {
-	var repo authRequestRepository.Repository = authRequestRepository.NewRuntimeRepository()
-	return &Identity{
-		authRequestService: *authRequestService.New(&repo),
-	}
-}
-
-var identityService *Identity = New()
-
 func NewFiberMiddleware() fiber.Handler {
+	identityService := identity.New()
 	return func(c *fiber.Ctx) error {
+
+		fmt.Println(c.Body())
 
 		if c.Path() == endpoints.OIDC.Auth {
 			authRequest := &models.AuthRequestModel{
@@ -64,7 +53,7 @@ func NewFiberMiddleware() fiber.Handler {
 				return c.Status(fiber.StatusBadRequest).SendString("require PKEC")
 			}
 
-			if identityService.authRequestService.AddAuthRequest(authRequest) != nil {
+			if identityService.AuthRequestService.AddAuthRequest(authRequest) != nil {
 				return c.Status(fiber.StatusBadRequest).SendString("failed to add auth request")
 			}
 
@@ -74,7 +63,7 @@ func NewFiberMiddleware() fiber.Handler {
 		}
 
 		if c.Path() == endpoints.OIDC.Token {
-            // CODE FLOW
+			// CODE FLOW
 			tokenRequest := &models.AuthRequestModel{
 				RequestTime:  c.Context().ConnTime().Unix(),
 				RedirectURI:  c.FormValue("redirect_uri"),
@@ -84,56 +73,48 @@ func NewFiberMiddleware() fiber.Handler {
 				AuthCode:     c.FormValue("code"),
 			}
 
-            // if tokenRequest.ResponseType != "authorization_code"{
-            //     return c.Status(fiber.StatusBadRequest).SendString("auth flow not support")
-            // }
+			// if tokenRequest.ResponseType != "authorization_code"{
+			//     return c.Status(fiber.StatusBadRequest).SendString("auth flow not support")
+			// }
 
-            fmt.Println("tokenRequest", tokenRequest)
+			fmt.Println("tokenRequest", tokenRequest)
 
-            codeVerify := c.FormValue("code_verifier")
+			codeVerify := c.FormValue("code_verifier")
 
-            auth, err := identityService.authRequestService.GetCodeFlowRequest(tokenRequest.AuthCode)
-            if err != nil {
-                return c.Status(fiber.StatusBadRequest).SendString("Code not found" + err.Error())
-            }
+			auth, err := identityService.AuthRequestService.GetCodeFlowRequest(tokenRequest.AuthCode)
+			if err != nil {
+				return c.Status(fiber.StatusBadRequest).SendString("Code not found" + err.Error())
+			}
 
-            if auth.ChallengeCode != codeVerify {
-                return c.Status(fiber.StatusBadRequest).SendString("Code verifier not match")
-            }
+			if auth.ChallengeCode != codeVerify {
+				return c.Status(fiber.StatusBadRequest).SendString("Code verifier not match")
+			}
 
-            // if auth.ClientID != tokenRequest.ClientID {
-            //     return c.Status(fiber.StatusBadRequest).SendString("Client ID not match")
-            // }
+			// if auth.ClientID != tokenRequest.ClientID {
+			//     return c.Status(fiber.StatusBadRequest).SendString("Client ID not match")
+			// }
 
-            return c.JSON(fiber.Map{
-                "access_token":  "MOCK_ACCESS_TOKEN" + tokenRequest.ResponseType,
-                "token_type":    "bearer",
-                "expires_in":    3600,
-                "refresh_token": "MOCK_REFRESH_TOKEN",
-                "scope":         tokenRequest.Scope,
-            })
+			return c.JSON(fiber.Map{
+				"access_token":  "MOCK_ACCESS_TOKEN" + tokenRequest.ResponseType,
+				"token_type":    "bearer",
+				"expires_in":    3600,
+				"refresh_token": "MOCK_REFRESH_TOKEN",
+				"scope":         tokenRequest.Scope,
+			})
 
+		}
+
+		if c.Path() == "/callback" {
+			res := c.Queries()
+			return c.JSON(res)
 		}
 
 		if c.Path() == "/identity-health-check" {
 			checkCode := c.Query("check_code")
 			return c.SendString(c.Method() + " " + c.Path() + " " + checkCode)
 		}
+
 		c.Locals("userID", "anonymous")
 		return c.Next()
 	}
-}
-
-func (i *Identity) Hello() string {
-	return "HELLO FROM IDENTITY MODULE."
-}
-
-func (i *Identity) CodeFlowRequest(req *models.AuthRequestModel) error {
-	if req.ResponseType != "authorization_code" {
-		return fmt.Errorf("grant type is not code flow")
-	}
-	if req.ChallengeCode == "" {
-		return fmt.Errorf("require PKEC")
-	}
-	return nil
 }

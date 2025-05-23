@@ -1,6 +1,6 @@
 package authRequestRepository
 
-import "github.com/villsource/docuval-identity/pkg/models"
+import "github.com/villsource/docuval-identity/internal/models"
 
 type Repository interface {
 	SaveAuthRequest(authRequest *models.AuthRequestModel) error

@@ -1,6 +1,6 @@
 package authRequestService
 
-import "github.com/villsource/docuval-identity/pkg/models"
+import "github.com/villsource/docuval-identity/internal/models"
 
 
 type Service interface {

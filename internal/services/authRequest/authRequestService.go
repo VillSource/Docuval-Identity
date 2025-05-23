@@ -3,8 +3,8 @@ package authRequestService
 import (
 	"fmt"
 
-	"github.com/villsource/docuval-identity/pkg/models"
-	"github.com/villsource/docuval-identity/pkg/repositories/authRequest"
+	"github.com/villsource/docuval-identity/internal/models"
+	"github.com/villsource/docuval-identity/internal/repositories/authRequest"
 )
 
 type AuthRequestService struct {
